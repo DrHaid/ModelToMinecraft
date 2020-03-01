@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
 using UnityEngine;
 
@@ -12,7 +13,6 @@ public class ModelToMinecraftManager : MonoBehaviour
   public GameObject sourceObject;
   public GameObject voxelObject;
   public GameObject originBlock;
-  public Material standardMaterial;
   [HideInInspector]public Mesh srcMesh;
 
   private MeshVoxelizer meshVoxelizer;
@@ -34,6 +34,7 @@ public class ModelToMinecraftManager : MonoBehaviour
   /// <param name="size">xyz size of the voxel object collection</param>
   public void GenerateBlocks(int size)
   {
+    Color defaultColor = gameObject.GetComponent<BlockDrawer>().selectedColor;
     voxelObject.SetActive(true);
     var bounds = srcMesh.bounds;
     var max = bounds.extents.x;
@@ -57,7 +58,8 @@ public class ModelToMinecraftManager : MonoBehaviour
             GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.transform.parent = voxelObject.transform;
             cube.transform.localPosition = new Vector3(i, j, k);
-            cube.GetComponent<MeshRenderer>().material = standardMaterial;
+            cube.tag = "Voxel";
+            cube.GetComponent<MeshRenderer>().material.color = defaultColor;
           }
         }
       }
@@ -74,14 +76,15 @@ public class ModelToMinecraftManager : MonoBehaviour
     var lines = new List<string>();
     foreach (Transform child in voxelObject.transform)
     {
-      string matName = child.GetComponent<MeshRenderer>().material.name.Replace(" (Instance)", "");
+      Color color = child.GetComponent<MeshRenderer>().material.color;
+      string blockName = BlockMaterialMapping.blockMaterialMap.FirstOrDefault(x => x.Value == color).Key;
       Vector3 minecraftBlockPosition = 
         new Vector3(
           child.position.x - originBlock.transform.position.x,
           child.position.y - originBlock.transform.position.y,
           -(child.position.z - originBlock.transform.position.z)
         );
-      string line = $"setblock ~{minecraftBlockPosition.x} ~{minecraftBlockPosition.y} ~{minecraftBlockPosition.z} {MaterialBlockMapping.matBlockMap[matName]}";
+      string line = $"setblock ~{minecraftBlockPosition.x} ~{minecraftBlockPosition.y} ~{minecraftBlockPosition.z} {blockName}";
       lines.Add(line);
     }
     return lines;
@@ -132,12 +135,5 @@ public class ModelToMinecraftManager : MonoBehaviour
       }
     }
   }
-}
-
-public class MaterialBlockMapping
-{
-  public static Dictionary<string, string> matBlockMap= new Dictionary<string, string>(){
-    {"quartz", "minecraft:quartz_block"}
-  };
 }
 
